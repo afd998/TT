@@ -1,0 +1,23 @@
+{
+  "name": "sn",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "run:node": "node tests/run-close-tickets.js --headed",
+    "run:ci": "node tests/run-close-tickets.js --headless"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "playwright": "^1.56.1"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3"
+  }
+}

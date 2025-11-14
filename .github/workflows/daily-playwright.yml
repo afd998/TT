@@ -1,0 +1,28 @@
+name: Daily Playwright Run
+
+on:
+  schedule:
+    - cron: '0 9 * * *' # 09:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  run-playwright:
+    runs-on: ubuntu-latest
+    env:
+      NETID: ${{ secrets.NETID }}
+      NETID_PW: ${{ secrets.NETID_PW }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Playwright script (headless)
+        run: npm run run:ci
