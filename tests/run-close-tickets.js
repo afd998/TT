@@ -87,15 +87,9 @@ async function run() {
       await goToIncidentList(page);
     }
 
-    if (!headless) {
-      await waitForEnter('Inspect the ServiceNow page, then press Enter to close Chrome...');
-    }
+    console.log('✅ Finished processing all matching tickets.');
   } finally {
-    if (headless) {
-      await browser.close();
-    } else {
-      await browser.close();
-    }
+    await browser.close();
   }
 }
 
@@ -119,8 +113,7 @@ async function logIncidentRows(page) {
 
   const shifts = config.shifts || [];
   let firstMatch = null;
-  const maxRowsToLog = Math.min(rowCount, config.logging.maxRows || 25);
-  for (let i = 0; i < maxRowsToLog; i += 1) {
+  for (let i = 0; i < rowCount; i += 1) {
     const row = rowLocator.nth(i);
     const sysId = (await row.getAttribute('sys_id')) || 'unknown';
     const preview = (await row.innerText()).replace(/\s+/g, ' ').trim();
@@ -128,11 +121,7 @@ async function logIncidentRows(page) {
     const room = parseRoom(preview);
     const matchingShift = expectedStart && room ? findMatchingShift(expectedStart, room, shifts) : null;
     const shiftLabel = matchingShift ? `🟢 My event (${matchingShift.name})` : '⚪ not my shift';
-    console.log(
-      `  [${i + 1}] ${sysId}: ${preview} ${
-        expectedStart ? `| expectedStart=${expectedStart.toLocaleString()} room=${room || 'unknown'} ${shiftLabel}` : ''
-      }`
-    );
+    console.log(`  [${i + 1}] ${sysId}: ${shiftLabel}`);
 
     if (!firstMatch && matchingShift) {
       const link = await extractTicketLink(row);
@@ -148,9 +137,6 @@ async function logIncidentRows(page) {
     }
   }
 
-  if (rowCount > maxRowsToLog) {
-    console.log(`  … plus ${rowCount - maxRowsToLog} more rows (truncated).`);
-  }
   return firstMatch;
 }
 
@@ -293,6 +279,10 @@ async function mainTicketFormCompletion(page) {
   await assignedField.press('Enter').catch(() => {});
   console.log(`✅ Filled assigned_to with ${config.name}`);
 
+  const notesTab = frame.locator('span.tab_caption_text', { hasText: 'Notes' });
+  await notesTab.waitFor({ state: 'visible', timeout: 30_000 });
+  await notesTab.click();
+
   const travelMinutesInput = frame.locator('#tmr_4d3b18474741f65003e44af3616d437e_min');
   await travelMinutesInput.waitFor({ state: 'visible', timeout: 30_000 });
   await travelMinutesInput.fill('');
@@ -311,6 +301,16 @@ async function mainTicketFormCompletion(page) {
   const parsedDescription = parseIncidentDescription(descriptionText);
   console.log('📝 Parsed description data', parsedDescription);
 
+  const shortDescriptionField = frame.locator('#incident\\.short_description');
+  await shortDescriptionField.waitFor({ state: 'visible', timeout: 30_000 });
+  const parentShortDescription = await shortDescriptionField.evaluate((el) => el.value || '').catch(() => '');
+  console.log(`📝 Parent short description: ${parentShortDescription}`);
+
+  const expectedStartField = frame.locator('#incident\\.expected_start');
+  await expectedStartField.waitFor({ state: 'visible', timeout: 30_000 });
+  const parentExpectedStart = await expectedStartField.evaluate((el) => el.value || '').catch(() => '');
+  console.log(`📝 Parent expected_start: ${parentExpectedStart}`);
+
   const saveButton = frame.locator('button#sysverb_update_and_stay');
   await saveButton.waitFor({ state: 'visible', timeout: 30_000 });
   await saveButton.click();
@@ -318,7 +318,7 @@ async function mainTicketFormCompletion(page) {
 
   console.log(`📦 Preparing to create ${parsedDescription.resources.length} child tickets`);
   await page.waitForLoadState('domcontentloaded');
-  await createChildTickets({ page, resources: parsedDescription.resources, resolveIncidentFrame });
+  await createChildTickets({ page, resources: parsedDescription.resources, resolveIncidentFrame, parentShortDescription, parentExpectedStart });
 
   await finalizeParentTicket(page);
 }
