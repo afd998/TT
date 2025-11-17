@@ -1,0 +1,46 @@
+name: Close Aged Tickets Friday
+
+on:
+  schedule:
+    # Run every Friday at 2pm CST (8pm UTC)
+    # Note: CST is UTC-6, so 2pm CST = 8pm UTC
+    # During daylight saving time (CDT), this will run at 3pm CDT
+    - cron: '0 20 * * 5'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  close-aged-tickets:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+        
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        
+      - name: Run close aged tickets script
+        env:
+          NETID: ${{ secrets.NETID }}
+          NETID_PW: ${{ secrets.NETID_PW }}
+          HEADLESS: 'true'
+          CI: 'true'
+        run: npm run run:aged:ci
+        
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-aged
+          path: playwright-report/
+          retention-days: 7
+

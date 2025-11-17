@@ -7,7 +7,9 @@
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "run:node": "node tests/run-close-tickets.js --headed",
-    "run:ci": "node tests/run-close-tickets.js --headless"
+    "run:ci": "node tests/run-close-tickets.js --headless",
+    "run:aged:node": "node tests/run-close-aged-tickets.js --headed",
+    "run:aged:ci": "node tests/run-close-aged-tickets.js --headless"
   },
   "keywords": [],
   "author": "",
