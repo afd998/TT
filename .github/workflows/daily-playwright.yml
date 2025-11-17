@@ -1,28 +1,45 @@
-name: Daily Playwright Run
+name: Close Tickets Daily
 
 on:
   schedule:
-    - cron: '0 9 * * *' # 09:00 UTC daily
-  workflow_dispatch:
+    # Run daily at 2pm CST (8pm UTC)
+    # Note: CST is UTC-6, so 2pm CST = 8pm UTC
+    # During daylight saving time (CDT), this will run at 3pm CDT
+    - cron: '0 20 * * *'
+  workflow_dispatch: # Allow manual triggering
 
 jobs:
-  run-playwright:
+  close-tickets:
     runs-on: ubuntu-latest
-    env:
-      NETID: ${{ secrets.NETID }}
-      NETID_PW: ${{ secrets.NETID_PW }}
+    
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Use Node.js 20
+      
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-
+          node-version: '20'
+          cache: 'npm'
+      
       - name: Install dependencies
-        run: npm install
-
-      - name: Run Playwright script (headless)
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      
+      - name: Run close tickets script
+        env:
+          NETID: ${{ secrets.NETID }}
+          NETID_PW: ${{ secrets.NETID_PW }}
+          HEADLESS: 'true'
+          CI: 'true'
         run: npm run run:ci
+      
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
