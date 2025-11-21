@@ -283,7 +283,8 @@ async function mainTicketFormCompletion(page) {
   await notesTab.waitFor({ state: 'visible', timeout: 30_000 });
   await notesTab.click();
 
-  const travelMinutesInput = frame.locator('#tmr_4d3b18474741f65003e44af3616d437e_min');
+  // Use pattern-based selector for dynamic time entry field ID
+  const travelMinutesInput = frame.locator('input[id^="tmr_"][id$="_min"]');
   await travelMinutesInput.waitFor({ state: 'visible', timeout: 30_000 });
   await travelMinutesInput.fill('');
   await travelMinutesInput.fill('5');
