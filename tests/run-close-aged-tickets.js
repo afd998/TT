@@ -7,7 +7,7 @@ const readline = require('readline');
 
 const SERVICENOW_BASE = 'https://kiskellogg.service-now.com/';
 const AGED_INCIDENT_LIST_PATH =
-  'now/nav/ui/classic/params/target/incident_list.do%3Fsysparm_query%3Dexpected_start%253Cjavascript%3Ags.beginningOfThisWeek()%255Elocation%253D975fc569db79df40743715ce3b96193f%255Ecaller_id%253Db0a117d0dbe3af009d9a36be3b96197f%255Estate!%253D7%255Estate!%253D8%255Eassignment_group!%253Dc6445961dbb9df40743715ce3b9619f1%255Econtact_type%253DScheduling%2520System%255Estate!%253D6%26sysparm_first_row%3D1%26sysparm_view%3Dclassroom_details';
+  'now/nav/ui/classic/params/target/incident_list.do%3Fsysparm_query%3Dexpected_start%253Cjavascript%3Ags.beginningOfToday()%255Elocation%253D975fc569db79df40743715ce3b96193f%255Ecaller_id%253Db0a117d0dbe3af009d9a36be3b96197f%255Estate%253D3%255Eassignment_group!%253Dc6445961dbb9df40743715ce3b9619f1%255Econtact_type%253DScheduling%2520System%255Estate!%253D6%26sysparm_first_row%3D1%26sysparm_view%3Dclassroom_details';
 
 function resolveHeadlessSetting() {
   const args = process.argv.slice(2);
