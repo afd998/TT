@@ -7,7 +7,7 @@ const readline = require('readline');
 
 const SERVICENOW_BASE = 'https://kiskellogg.service-now.com/';
 const AGED_INCIDENT_LIST_PATH =
-  'now/nav/ui/classic/params/target/incident_list.do%3Fsysparm_query%3Dexpected_start%253Cjavascript%3Ags.beginningOfToday()%255Elocation%253D975fc569db79df40743715ce3b96193f%255Ecaller_id%253Db0a117d0dbe3af009d9a36be3b96197f%255Estate%253D3%255Eassignment_group!%253Dc6445961dbb9df40743715ce3b9619f1%255Econtact_type%253DScheduling%2520System%255Estate!%253D6%26sysparm_first_row%3D1%26sysparm_view%3Dclassroom_details';
+  'now/nav/ui/classic/params/target/incident_list.do%3Fsysparm_query%3Dexpected_start%253Cjavascript%3Ags.beginningOfToday()%255Elocation%253D975fc569db79df40743715ce3b96193f%255Ecaller_id%253Db0a117d0dbe3af009d9a36be3b96197f%255Estate%253D3%255Eassignment_group!%253Dc6445961dbb9df40743715ce3b9619f1%255Econtact_type%253DScheduling%2520System%255Estate!%253D6%255Eassignment_group%253Dc2445961dbb9df40743715ce3b9619f6%26sysparm_first_row%3D1%26sysparm_view%3Dclassroom_details';
 
 function resolveHeadlessSetting() {
   const args = process.argv.slice(2);
@@ -21,6 +21,75 @@ function resolveHeadlessSetting() {
   return process.env.CI === 'true'; // default: headed locally, headless in CI
 }
 
+function resolveSlowMoSetting() {
+  const args = process.argv.slice(2);
+  for (const arg of args) {
+    const slowValue = parseSlowArg(arg);
+    if (slowValue != null) return slowValue;
+  }
+
+  const envMs = parseDelayMs(process.env.SLOWMO_MS);
+  if (envMs != null) return envMs;
+
+  return 0;
+}
+
+function parseSlowArg(arg) {
+  if (!arg) return null;
+  if (arg.startsWith('--slowmo=')) return parseDelayMs(arg.split('=')[1]);
+  if (arg.startsWith('--slow-mo=')) return parseDelayMs(arg.split('=')[1]);
+  if (arg.startsWith('--slomo=')) return parseDelayMs(arg.split('=')[1]);
+  if (arg === '--slow') return 250; // convenience flag for small slowMo
+  return null;
+}
+
+function resolveTicketDelaySetting() {
+  const args = process.argv.slice(2);
+  for (const arg of args) {
+    const delayMs = parseDelayArg(arg);
+    if (delayMs != null) return delayMs;
+  }
+
+  const envMs = parseDelayMs(process.env.TICKET_DELAY_MS);
+  if (envMs != null) return envMs;
+
+  const envSeconds =
+    parseDelayMs(process.env.TICKET_DELAY_SECONDS, 1000) ||
+    parseDelayMs(process.env.TICKET_DELAY, 1000);
+  if (envSeconds != null) return envSeconds;
+
+  return 0;
+}
+
+function parseDelayArg(arg) {
+  if (!arg) return null;
+  if (arg.startsWith('--delay-ms=')) return parseDelayMs(arg.split('=')[1]);
+  if (arg.startsWith('--delay-seconds=')) return parseDelayMs(arg.split('=')[1], 1000);
+  if (arg.startsWith('--delay=')) return parseDelayMs(arg.split('=')[1], 1000);
+  return null;
+}
+
+function parseDelayMs(rawValue, multiplier = 1) {
+  if (rawValue == null || rawValue === '') return null;
+  const numeric = Number(rawValue);
+  if (!Number.isFinite(numeric) || numeric < 0) return null;
+  return Math.round(numeric * multiplier);
+}
+
+function formatDelay(delayMs) {
+  if (delayMs >= 1000) {
+    const seconds = delayMs / 1000;
+    return Number.isInteger(seconds) ? `${seconds}s` : `${seconds.toFixed(1)}s`;
+  }
+  return `${delayMs}ms`;
+}
+
+async function applyTicketDelay(page, delayMs) {
+  if (!delayMs) return;
+  console.log(`⏱ Waiting ${formatDelay(delayMs)} before returning to the queue...`);
+  await page.waitForTimeout(delayMs);
+}
+
 async function run() {
   const netId = process.env.NETID;
   const netPassword = process.env.NETID_PW;
@@ -29,9 +98,17 @@ async function run() {
   }
 
   const headless = resolveHeadlessSetting();
+  const slowMoMs = resolveSlowMoSetting();
+  const ticketDelayMs = resolveTicketDelaySetting();
   console.log(`Launching Chrome in ${headless ? 'headless' : 'headed'} mode...`);
+  if (slowMoMs > 0) {
+    console.log(`SlowMo enabled: ${formatDelay(slowMoMs)} between Playwright steps`);
+  }
+  if (ticketDelayMs > 0) {
+    console.log(`Per-ticket delay configured: ${formatDelay(ticketDelayMs)}`);
+  }
 
-  const browser = await chromium.launch({ channel: 'chrome', headless });
+  const browser = await chromium.launch({ channel: 'chrome', headless, slowMo: slowMoMs });
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await context.newPage();
 
@@ -74,6 +151,7 @@ async function run() {
       await page.waitForLoadState('domcontentloaded');
       await processAgedTicket(page);
       await page.waitForLoadState('domcontentloaded');
+      await applyTicketDelay(page, ticketDelayMs);
       await goToAgedIncidentList(page);
     }
 
