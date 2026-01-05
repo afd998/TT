@@ -167,17 +167,34 @@ async function goToAgedIncidentList(page) {
 
 async function getFirstTicketLink(page) {
   const frame = await resolveIncidentFrame(page);
+
+  // Check for "no records" message first — ServiceNow shows this when the list is empty
+  const noRecordsMsg = frame.locator('.list2_no_records, .no_records, text=No records to display').first();
+  const noRecordsVisible = await noRecordsMsg.isVisible({ timeout: 5_000 }).catch(() => false);
+  if (noRecordsVisible) {
+    console.log('📄 Found 0 incident rows (no records message displayed)');
+    return null;
+  }
+
+  // Wait for the table body to be attached (it may be hidden if empty)
   const listTable = frame.locator('tbody.list2_body');
-  await listTable.first().waitFor({ state: 'visible', timeout: 60_000 });
+  await listTable.first().waitFor({ state: 'attached', timeout: 60_000 }).catch(() => null);
+
+  // If the table isn't visible, there are no rows to process
+  const tableVisible = await listTable.first().isVisible().catch(() => false);
+  if (!tableVisible) {
+    console.log('📄 Found 0 incident rows (list table hidden or empty)');
+    return null;
+  }
 
   const rowLocator = listTable.locator('tr.list_row');
   const rowCount = await rowLocator.count();
   console.log(`📄 Found ${rowCount} incident rows`);
-  
+
   if (rowCount === 0) {
     return null;
   }
-  
+
   const firstRow = rowLocator.first();
   const link = await extractTicketLink(firstRow);
   return link;
