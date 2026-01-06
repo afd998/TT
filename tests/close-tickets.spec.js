@@ -176,7 +176,8 @@ async function mainTicketFormCompletion(page) {
   await assignedField.fill(config.name);
   await assignedField.press('Enter').catch(() => {});
 
-  const travelMinutesInput = frame.locator('#tmr_4d3b18474741f65003e44af3616d437e_min');
+  // ID changes per session; target the generic tmr_*_min time-worked input
+  const travelMinutesInput = frame.locator('input[id^="tmr_"][id$="_min"]');
   await travelMinutesInput.waitFor({ state: 'visible', timeout: 30_000 });
   await travelMinutesInput.fill('');
   await travelMinutesInput.fill('5');
