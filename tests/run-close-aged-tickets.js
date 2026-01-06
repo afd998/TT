@@ -127,6 +127,7 @@ async function run() {
       await page.locator('#idToken2').fill(netPassword);
       await page.locator('#loginButton_0').click();
       await page.waitForLoadState('networkidle');
+      await waitForPostLoginReady(page);
     }
 
     await goToAgedIncidentList(page);
@@ -163,6 +164,11 @@ async function run() {
 
 async function goToAgedIncidentList(page) {
   await page.goto(`${SERVICENOW_BASE}${AGED_INCIDENT_LIST_PATH}`, { waitUntil: 'domcontentloaded' });
+}
+
+async function waitForPostLoginReady(page) {
+  await page.waitForURL(/kiskellogg\.service-now\.com/, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+  await page.waitForSelector('iframe[name="gsft_main"]', { state: 'attached', timeout: 60_000 });
 }
 
 async function getFirstTicketLink(page) {
